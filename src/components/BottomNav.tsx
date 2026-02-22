@@ -1,18 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Heart, Utensils, History, User } from 'lucide-react';
+import { Home, Heart, Utensils, Trophy, User } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Início', icon: Home },
   { path: '/vaquinhas', label: 'Vaquinhas', icon: Heart },
   { path: '/racao', label: 'Ração', icon: Utensils },
-  { path: '/doacoes', label: 'Doações', icon: History },
+  { path: '/ranking', label: 'Ranking', icon: Trophy },
   { path: '/perfil', label: 'Perfil', icon: User },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
 
-  // Hide bottom nav on admin pages
   if (location.pathname.startsWith('/admin')) return null;
 
   return (

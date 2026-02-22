@@ -1,20 +1,60 @@
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { User, Mail, Heart, LogOut, LogIn, Trophy } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
-import { User, Mail, Heart, Settings } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const ProfilePage = () => {
-  const { profile, setProfile, donations } = useApp();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(profile.name);
-  const [email, setEmail] = useState(profile.email);
+  const { user, profile, signOut, loading: authLoading } = useAuth();
+  const { donations } = useApp();
+  const navigate = useNavigate();
 
-  const userDonations = donations.filter(d => d.email === profile.email);
+  const userDonations = user
+    ? donations.filter(d => d.email === user.email)
+    : [];
   const totalDonated = userDonations.reduce((sum, d) => sum + d.amount, 0);
 
-  const handleSave = () => {
-    setProfile({ name, email });
-    setEditing(false);
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center pb-24">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="pb-24">
+        <div className="bg-primary px-4 pb-6 pt-8">
+          <h1 className="text-2xl font-extrabold text-primary-foreground">Perfil</h1>
+        </div>
+        <div className="mx-auto max-w-lg px-4 -mt-3">
+          <div className="rounded-2xl border border-border bg-card p-8 text-center animate-slide-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent mx-auto mb-4">
+              <User size={28} className="text-primary" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground mb-2">Entre na sua conta</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Crie uma conta para acompanhar suas doações e aparecer no ranking!
+            </p>
+            <Link
+              to="/auth"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-base font-bold text-primary-foreground"
+            >
+              <LogIn size={18} /> Entrar ou Criar Conta
+            </Link>
+            <p className="text-[10px] text-muted-foreground mt-4">
+              Você pode doar sem conta, mas não aparecerá no ranking
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
   return (
@@ -31,39 +71,12 @@ const ProfilePage = () => {
               <User size={28} className="text-primary" />
             </div>
             <div className="flex-1">
-              {editing ? (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <button onClick={handleSave} className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">
-                    Salvar
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <p className="text-lg font-bold text-foreground">{profile.name}</p>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Mail size={12} />
-                    <span>{profile.email}</span>
-                  </div>
-                </>
-              )}
+              <p className="text-lg font-bold text-foreground">{profile?.display_name || 'Usuário'}</p>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Mail size={12} />
+                <span>{user.email}</span>
+              </div>
             </div>
-            {!editing && (
-              <button onClick={() => setEditing(true)} className="rounded-full p-2 hover:bg-muted">
-                <Settings size={18} className="text-muted-foreground" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -80,6 +93,18 @@ const ProfilePage = () => {
             <p className="text-[10px] text-muted-foreground">Doações feitas</p>
           </div>
         </div>
+
+        {/* Ranking link */}
+        <Link
+          to="/ranking"
+          className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary transition-colors"
+        >
+          <Trophy size={20} className="text-primary" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">Ranking de Doadores</p>
+            <p className="text-[10px] text-muted-foreground">Veja sua posição entre os maiores doadores</p>
+          </div>
+        </Link>
 
         {/* Donation history */}
         <div className="mt-6">
@@ -101,13 +126,13 @@ const ProfilePage = () => {
           )}
         </div>
 
-        {/* Admin link */}
-        <Link
-          to="/admin"
-          className="mt-8 block rounded-xl border border-border bg-card p-4 text-center text-sm font-semibold text-muted-foreground hover:border-primary transition-colors"
+        {/* Sign out */}
+        <button
+          onClick={handleSignOut}
+          className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm font-semibold text-destructive hover:bg-destructive/5 transition-colors"
         >
-          ⚙️ Painel Administrativo
-        </Link>
+          <LogOut size={16} /> Sair da Conta
+        </button>
       </div>
     </div>
   );

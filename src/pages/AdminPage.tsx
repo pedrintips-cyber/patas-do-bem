@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useApp } from '@/contexts/AppContext';
-import { ArrowLeft, Menu, X, LayoutDashboard, Heart, Utensils, Settings, Plus, Edit2, Trash2, Save, Image } from 'lucide-react';
+import { ArrowLeft, Menu, X, LayoutDashboard, Heart, Utensils, Settings, Plus, Edit2, Trash2, Save, Image, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -11,7 +12,96 @@ type AdminTab = 'dashboard' | 'campaigns' | 'ration' | 'site';
 const CHART_COLORS = ['hsl(145, 63%, 42%)', 'hsl(40, 90%, 55%)', 'hsl(220, 70%, 55%)', 'hsl(0, 84%, 60%)', 'hsl(280, 60%, 55%)'];
 
 const AdminPage = () => {
+  const { user, loading, isAdmin, signIn } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return <AdminLogin onLogin={signIn} />;
+  }
+
+  return <AdminDashboard />;
+};
+
+/* ─── ADMIN LOGIN ─── */
+const AdminLogin = ({ onLogin }: { onLogin: (email: string, password: string) => Promise<{ error: string | null }> }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await onLogin(email, password);
+    if (error) {
+      toast.error('Credenciais inválidas');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm animate-slide-up">
+        <div className="text-center mb-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-3">
+            <Lock size={28} className="text-primary" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-foreground">Painel Admin</h1>
+          <p className="text-sm text-muted-foreground">Acesso restrito</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">Login</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="admin@email.com"
+              className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-primary">
+            ← Voltar ao site
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── ADMIN DASHBOARD ─── */
+const AdminDashboard = () => {
   const { campaigns, donations, food, siteConfig, addCampaign, updateCampaign, deleteCampaign, addCampaignUpdate, updateFoodSettings, updateSiteConfig } = useApp();
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
@@ -27,6 +117,10 @@ const AdminPage = () => {
     { key: 'site' as AdminTab, label: 'Configurar Site', icon: Settings },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -39,9 +133,9 @@ const AdminPage = () => {
             <h1 className="text-xl font-extrabold text-primary-foreground">Painel Admin</h1>
             <p className="text-xs text-primary-foreground/70">{menuItems.find(m => m.key === activeTab)?.label}</p>
           </div>
-          <Link to="/perfil" className="rounded-full bg-primary-foreground/20 p-2">
-            <ArrowLeft size={18} className="text-primary-foreground" />
-          </Link>
+          <button onClick={handleSignOut} className="rounded-full bg-primary-foreground/20 px-3 py-1.5 text-xs font-bold text-primary-foreground">
+            Sair
+          </button>
         </div>
       </div>
 
@@ -88,13 +182,10 @@ const AdminPage = () => {
 /* ─── DASHBOARD ─── */
 const DashboardTab = () => {
   const { campaigns, donations, food } = useApp();
-
   const totalRaised = donations.reduce((sum, d) => sum + d.amount, 0);
-  const campaignDonations = donations.filter(d => d.type === 'campaign');
-  const foodDonations = donations.filter(d => d.type === 'food');
-
   const pieData = campaigns.map(c => ({ name: c.name, value: c.raised }));
   const barData = campaigns.map(c => ({ name: c.name.length > 12 ? c.name.slice(0, 12) + '…' : c.name, arrecadado: c.raised, meta: c.goal, doadores: c.donors }));
+  const topCampaign = [...campaigns].sort((a, b) => b.donors - a.donors)[0];
 
   const stats = [
     { label: 'Total Arrecadado', value: `R$ ${totalRaised.toLocaleString('pt-BR')}` },
@@ -103,12 +194,8 @@ const DashboardTab = () => {
     { label: 'Ração (kg)', value: `${food.raisedKg}/${food.goalKg}` },
   ];
 
-  // Most accessed = most donors
-  const topCampaign = [...campaigns].sort((a, b) => b.donors - a.donors)[0];
-
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         {stats.map(s => (
           <div key={s.label} className="rounded-2xl border border-border bg-card p-4">
@@ -117,8 +204,6 @@ const DashboardTab = () => {
           </div>
         ))}
       </div>
-
-      {/* Top campaign */}
       {topCampaign && (
         <div className="rounded-2xl border border-border bg-accent/50 p-4">
           <p className="text-xs text-muted-foreground mb-1">🏆 Vaquinha mais popular</p>
@@ -126,23 +211,17 @@ const DashboardTab = () => {
           <p className="text-sm text-muted-foreground">{topCampaign.donors} doadores · R${topCampaign.raised} arrecadados</p>
         </div>
       )}
-
-      {/* Pie Chart */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-bold text-foreground mb-3">Distribuição por Campanha</h3>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name.slice(0, 8)}… ${(percent * 100).toFixed(0)}%`}>
-              {pieData.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-              ))}
+              {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: number) => `R$${v}`} />
           </PieChart>
         </ResponsiveContainer>
       </div>
-
-      {/* Bar Chart */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-bold text-foreground mb-3">Arrecadado vs Meta</h3>
         <ResponsiveContainer width="100%" height={220}>
@@ -156,8 +235,6 @@ const DashboardTab = () => {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      {/* Doadores chart */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-bold text-foreground mb-3">Doadores por Campanha</h3>
         <ResponsiveContainer width="100%" height={180}>
@@ -180,24 +257,13 @@ const CampaignsTab = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showUpdateForm, setShowUpdateForm] = useState<string | null>(null);
-
-  // Create form
   const [form, setForm] = useState({ name: '', location: '', goal: '', description: '', status: 'Ativa' as 'Ativa' | 'Urgente', image: '' });
-  // Edit form
   const [editForm, setEditForm] = useState<Partial<{ name: string; location: string; goal: string; description: string; status: 'Ativa' | 'Urgente'; image: string }>>({});
-  // Update form
   const [updateText, setUpdateText] = useState('');
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    addCampaign({
-      name: form.name,
-      image: form.image || dog1,
-      location: form.location,
-      status: form.status,
-      goal: parseInt(form.goal),
-      description: form.description,
-    });
+    addCampaign({ name: form.name, image: form.image || dog1, location: form.location, status: form.status, goal: parseInt(form.goal), description: form.description });
     setForm({ name: '', location: '', goal: '', description: '', status: 'Ativa', image: '' });
     setShowCreate(false);
     toast.success('Campanha criada!');
@@ -209,14 +275,7 @@ const CampaignsTab = () => {
   };
 
   const handleSaveEdit = (id: string) => {
-    updateCampaign(id, {
-      name: editForm.name,
-      location: editForm.location,
-      goal: parseInt(editForm.goal || '0'),
-      description: editForm.description,
-      status: editForm.status,
-      ...(editForm.image ? { image: editForm.image } : {}),
-    });
+    updateCampaign(id, { name: editForm.name, location: editForm.location, goal: parseInt(editForm.goal || '0'), description: editForm.description, status: editForm.status, ...(editForm.image ? { image: editForm.image } : {}) });
     setEditingId(null);
     toast.success('Campanha atualizada!');
   };
@@ -251,14 +310,10 @@ const CampaignsTab = () => {
 
   return (
     <div className="space-y-4 animate-slide-up">
-      <button
-        onClick={() => setShowCreate(!showCreate)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground"
-      >
+      <button onClick={() => setShowCreate(!showCreate)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
         <Plus size={18} /> Nova Campanha
       </button>
 
-      {/* Create form */}
       {showCreate && (
         <form onSubmit={handleCreate} className="space-y-3 rounded-2xl border border-border bg-card p-4 animate-slide-up">
           <input type="text" placeholder="Nome da campanha" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} required />
@@ -270,9 +325,7 @@ const CampaignsTab = () => {
           </select>
           <textarea placeholder="Descrição" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} className={inputCls + " resize-none"} required />
           <div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <Image size={16} /> Foto da campanha
-            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"><Image size={16} /> Foto da campanha</label>
             <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'create')} className="mt-1 text-sm text-muted-foreground" />
             {form.image && <img src={form.image} alt="Preview" className="mt-2 h-24 w-full rounded-xl object-cover" />}
           </div>
@@ -280,10 +333,8 @@ const CampaignsTab = () => {
         </form>
       )}
 
-      {/* Campaign list */}
       {campaigns.map(c => (
         <div key={c.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-          {/* Card header with image */}
           <div className="flex gap-3 p-4">
             <img src={c.image} alt={c.name} className="h-16 w-16 rounded-xl object-cover flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -293,14 +344,10 @@ const CampaignsTab = () => {
                   <p className="text-xs text-muted-foreground">{c.location}</p>
                   <p className="text-xs text-muted-foreground">R${c.raised} / R${c.goal} · {c.donors} doadores</p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.status === 'Urgente' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-                  {c.status}
-                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.status === 'Urgente' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>{c.status}</span>
               </div>
             </div>
           </div>
-
-          {/* Actions */}
           <div className="flex border-t border-border">
             <button onClick={() => editingId === c.id ? setEditingId(null) : startEdit(c)} className="flex flex-1 items-center justify-center gap-1 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors">
               <Edit2 size={13} /> Editar
@@ -312,8 +359,6 @@ const CampaignsTab = () => {
               <Trash2 size={13} /> Excluir
             </button>
           </div>
-
-          {/* Edit form */}
           {editingId === c.id && (
             <div className="border-t border-border p-4 space-y-3 animate-slide-up">
               <input type="text" value={editForm.name || ''} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="Nome" />
@@ -325,9 +370,7 @@ const CampaignsTab = () => {
               </select>
               <textarea value={editForm.description || ''} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} rows={3} className={inputCls + " resize-none"} placeholder="Descrição" />
               <div>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <Image size={16} /> Trocar foto
-                </label>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"><Image size={16} /> Trocar foto</label>
                 <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'edit')} className="mt-1 text-sm text-muted-foreground" />
                 {editForm.image && <img src={editForm.image} alt="Preview" className="mt-2 h-24 w-full rounded-xl object-cover" />}
               </div>
@@ -336,8 +379,6 @@ const CampaignsTab = () => {
               </button>
             </div>
           )}
-
-          {/* Update form */}
           {showUpdateForm === c.id && (
             <div className="border-t border-border p-4 space-y-2 animate-slide-up">
               <textarea placeholder="Texto da atualização..." value={updateText} onChange={e => setUpdateText(e.target.value)} rows={2} className={inputCls + " resize-none"} />
@@ -367,22 +408,18 @@ const RationTab = () => {
     <div className="animate-slide-up">
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <h2 className="text-lg font-bold text-foreground">Configurações de Ração</h2>
-
         <div>
           <label className="text-sm font-medium text-muted-foreground">Meta mensal (kg)</label>
           <input type="number" value={goalKg} onChange={e => setGoalKg(e.target.value)} className={inputCls + " mt-1"} />
         </div>
-
         <div>
           <label className="text-sm font-medium text-muted-foreground">Preço por kg (R$)</label>
           <input type="number" value={pricePerKg} onChange={e => setPricePerKg(e.target.value)} className={inputCls + " mt-1"} />
         </div>
-
         <div className="rounded-xl bg-accent/50 p-3">
           <p className="text-xs text-muted-foreground">Status atual</p>
           <p className="text-sm font-bold text-foreground">{food.raisedKg}kg / {food.goalKg}kg · {food.donors} doadores</p>
         </div>
-
         <button onClick={handleSave} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
           <Save size={16} /> Salvar
         </button>
@@ -402,9 +439,7 @@ const SiteConfigTab = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPreviewImage(ev.target?.result as string);
-    };
+    reader.onload = (ev) => { setPreviewImage(ev.target?.result as string); };
     reader.readAsDataURL(file);
   };
 
@@ -419,24 +454,19 @@ const SiteConfigTab = () => {
     <div className="animate-slide-up">
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <h2 className="text-lg font-bold text-foreground">Configurar Site</h2>
-
-        {/* Banner preview */}
         <div>
           <label className="text-sm font-medium text-muted-foreground">Banner Principal</label>
           <img src={previewImage} alt="Banner preview" className="mt-2 h-40 w-full rounded-xl object-cover" />
           <input type="file" accept="image/*" onChange={handleImageUpload} className="mt-2 text-sm text-muted-foreground" />
         </div>
-
         <div>
           <label className="text-sm font-medium text-muted-foreground">Título do Banner</label>
           <input type="text" value={heroTitle} onChange={e => setHeroTitle(e.target.value)} className={inputCls + " mt-1"} />
         </div>
-
         <div>
           <label className="text-sm font-medium text-muted-foreground">Subtítulo</label>
           <input type="text" value={heroSubtitle} onChange={e => setHeroSubtitle(e.target.value)} className={inputCls + " mt-1"} />
         </div>
-
         <button onClick={handleSave} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
           <Save size={16} /> Salvar Configurações
         </button>
