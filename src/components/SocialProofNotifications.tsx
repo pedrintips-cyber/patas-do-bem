@@ -1,15 +1,33 @@
 import { useEffect, useState } from 'react';
+import { useApp } from '@/contexts/AppContext';
 
 const names = ['Marcela', 'Matheus', 'Ana', 'João', 'Beatriz', 'Carlos', 'Fernanda', 'Lucas', 'Juliana', 'Rafael', 'Camila', 'Gustavo', 'Larissa', 'Diego', 'Patrícia'];
 const amounts = [2, 5, 10, 15, 20, 25, 30, 50, 100];
 
 const SocialProofNotifications = () => {
+  const { campaigns, addDonation } = useApp();
   const [notification, setNotification] = useState<{ name: string; amount: number; visible: boolean } | null>(null);
 
   useEffect(() => {
     const showNotification = () => {
       const name = names[Math.floor(Math.random() * names.length)];
       const amount = amounts[Math.floor(Math.random() * amounts.length)];
+
+      // Pick a random campaign to associate with
+      const campaign = campaigns.length > 0
+        ? campaigns[Math.floor(Math.random() * campaigns.length)]
+        : null;
+
+      // Add to donation history
+      addDonation({
+        name,
+        email: `${name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}@email.com`,
+        amount,
+        campaignId: campaign?.id ?? null,
+        campaignName: campaign?.name ?? 'Doação geral',
+        type: 'campaign',
+      });
+
       setNotification({ name, amount, visible: true });
 
       setTimeout(() => {
@@ -28,7 +46,7 @@ const SocialProofNotifications = () => {
       clearInterval(interval);
       clearTimeout(initial);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!notification) return null;
 

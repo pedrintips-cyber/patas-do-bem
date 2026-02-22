@@ -3,6 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import ProgressBar from '@/components/ProgressBar';
 import DonationModal from '@/components/DonationModal';
 import { toast } from 'sonner';
+import { Utensils, Info } from 'lucide-react';
 
 const kgOptions = [1, 5, 10, 20];
 
@@ -13,7 +14,8 @@ const FoodPage = () => {
   const [showModal, setShowModal] = useState(false);
 
   const kg = customKg ? parseInt(customKg) : selectedKg;
-  const amount = kg * 10;
+  const amount = kg * food.pricePerKg;
+  const percent = Math.min(Math.round((food.raisedKg / food.goalKg) * 100), 100);
 
   const handleDonation = (name: string, email: string) => {
     addFoodDonation(kg, name, email);
@@ -24,58 +26,85 @@ const FoodPage = () => {
 
   return (
     <div className="pb-24">
-      <div className="bg-primary px-4 pb-6 pt-8">
-        <h1 className="text-2xl font-extrabold text-primary-foreground">Ajude com ração 🥣</h1>
-        <p className="mt-1 text-sm text-primary-foreground/80">R$10 = 1kg de ração</p>
+      {/* Header */}
+      <div className="bg-primary px-4 pb-8 pt-8">
+        <div className="mx-auto max-w-lg">
+          <h1 className="text-2xl font-extrabold text-primary-foreground">Ajude com ração 🥣</h1>
+          <p className="mt-1 text-sm text-primary-foreground/80">Cada quilo faz a diferença</p>
+
+          {/* Progress inside header */}
+          <div className="mt-4 rounded-2xl bg-primary-foreground/15 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between text-primary-foreground mb-2">
+              <span className="text-sm font-bold">{food.raisedKg}kg arrecadados</span>
+              <span className="text-sm font-medium">{percent}%</span>
+            </div>
+            <div className="h-3 w-full rounded-full bg-primary-foreground/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary-foreground transition-all duration-700"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs text-primary-foreground/70">
+              <span>Meta: {food.goalKg}kg</span>
+              <span>{food.donors} doadores</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mx-auto max-w-lg px-4 -mt-3">
-        {/* Progress */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm animate-slide-up">
-          <div className="text-center mb-3">
-            <p className="text-sm text-muted-foreground">Meta mensal</p>
-            <p className="text-2xl font-extrabold text-foreground">{food.raisedKg}kg <span className="text-muted-foreground font-normal text-base">/ {food.goalKg}kg</span></p>
+      <div className="mx-auto max-w-lg px-4 -mt-4">
+        {/* How it works */}
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm animate-slide-up mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Info size={16} className="text-primary" />
+            <span className="text-sm font-bold text-foreground">Como funciona?</span>
           </div>
-          <ProgressBar current={food.raisedKg * 10} goal={food.goalKg * 10} />
-          <p className="mt-2 text-center text-xs text-muted-foreground">{food.donors} doadores este mês</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            R${food.pricePerKg} = 1kg de ração. Escolha a quantidade abaixo e sua doação será convertida automaticamente em ração para os cães resgatados.
+          </p>
         </div>
 
-        {/* Selection */}
-        <div className="mt-6">
-          <h2 className="text-lg font-bold text-foreground mb-3">Escolha a quantidade</h2>
-          <div className="grid grid-cols-4 gap-2">
-            {kgOptions.map(k => (
-              <button
-                key={k}
-                onClick={() => { setSelectedKg(k); setCustomKg(''); }}
-                className={`rounded-xl border py-4 text-center transition-all ${
-                  selectedKg === k && !customKg
-                    ? 'border-primary bg-primary text-primary-foreground scale-105'
-                    : 'border-border bg-card text-foreground hover:border-primary'
-                }`}
-              >
-                <span className="block text-lg font-bold">{k}kg</span>
-                <span className="text-[10px] opacity-80">R${k * 10}</span>
-              </button>
-            ))}
-          </div>
-          <input
-            type="number"
-            placeholder="Outra quantidade (kg)"
-            value={customKg}
-            onChange={e => setCustomKg(e.target.value)}
-            className="mt-3 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <p className="mt-1 text-xs text-muted-foreground text-center">
+        {/* Quick selection - bigger buttons */}
+        <h2 className="text-lg font-bold text-foreground mb-3">Quanto quer doar?</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {kgOptions.map(k => (
+            <button
+              key={k}
+              onClick={() => { setSelectedKg(k); setCustomKg(''); }}
+              className={`rounded-2xl border p-4 text-center transition-all ${
+                selectedKg === k && !customKg
+                  ? 'border-primary bg-primary text-primary-foreground scale-[1.02] shadow-md'
+                  : 'border-border bg-card text-foreground hover:border-primary hover:shadow-sm'
+              }`}
+            >
+              <Utensils size={20} className="mx-auto mb-1 opacity-70" />
+              <span className="block text-xl font-extrabold">{k}kg</span>
+              <span className="text-xs opacity-80">R${k * food.pricePerKg}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Custom */}
+        <input
+          type="number"
+          placeholder="Outra quantidade (kg)"
+          value={customKg}
+          onChange={e => setCustomKg(e.target.value)}
+          className="mt-4 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+
+        {kg > 0 && (
+          <p className="mt-2 text-center text-sm text-muted-foreground">
             {kg}kg = <span className="font-bold text-primary">R${amount}</span>
           </p>
-          <button
-            onClick={() => kg > 0 && setShowModal(true)}
-            className="mt-4 w-full rounded-xl bg-primary py-4 text-lg font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] hover:opacity-90"
-          >
-            Doar Ração 🥣
-          </button>
-        </div>
+        )}
+
+        <button
+          onClick={() => kg > 0 && setShowModal(true)}
+          className="mt-4 w-full rounded-xl bg-primary py-4 text-lg font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] hover:opacity-90"
+        >
+          Doar {kg}kg de Ração 🥣
+        </button>
       </div>
 
       <DonationModal

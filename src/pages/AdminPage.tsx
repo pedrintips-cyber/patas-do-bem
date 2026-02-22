@@ -1,158 +1,445 @@
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { ArrowLeft, Plus, Edit2 } from 'lucide-react';
+import { ArrowLeft, Menu, X, LayoutDashboard, Heart, Utensils, Settings, Plus, Edit2, Trash2, Save, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import dog1 from '@/assets/dog1.jpg';
 
+type AdminTab = 'dashboard' | 'campaigns' | 'ration' | 'site';
+
+const CHART_COLORS = ['hsl(145, 63%, 42%)', 'hsl(40, 90%, 55%)', 'hsl(220, 70%, 55%)', 'hsl(0, 84%, 60%)', 'hsl(280, 60%, 55%)'];
+
 const AdminPage = () => {
-  const { campaigns, addCampaign, updateCampaign, addCampaignUpdate } = useApp();
+  const { campaigns, donations, food, siteConfig, addCampaign, updateCampaign, deleteCampaign, addCampaignUpdate, updateFoodSettings, updateSiteConfig } = useApp();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+
+  const switchTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    setSidebarOpen(false);
+  };
+
+  const menuItems = [
+    { key: 'dashboard' as AdminTab, label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'campaigns' as AdminTab, label: 'Vaquinhas', icon: Heart },
+    { key: 'ration' as AdminTab, label: 'Ração', icon: Utensils },
+    { key: 'site' as AdminTab, label: 'Configurar Site', icon: Settings },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <div className="bg-primary px-4 pb-4 pt-6">
+        <div className="mx-auto max-w-4xl flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="rounded-full bg-primary-foreground/20 p-2">
+            <Menu size={20} className="text-primary-foreground" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-xl font-extrabold text-primary-foreground">Painel Admin</h1>
+            <p className="text-xs text-primary-foreground/70">{menuItems.find(m => m.key === activeTab)?.label}</p>
+          </div>
+          <Link to="/perfil" className="rounded-full bg-primary-foreground/20 p-2">
+            <ArrowLeft size={18} className="text-primary-foreground" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setSidebarOpen(false)} />
+          <div className="relative z-10 w-64 bg-card shadow-2xl animate-slide-up flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <span className="font-bold text-foreground">Menu Admin</span>
+              <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-1 hover:bg-muted">
+                <X size={20} className="text-muted-foreground" />
+              </button>
+            </div>
+            <nav className="flex-1 p-2">
+              {menuItems.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => switchTab(key)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+                    activeTab === key ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Icon size={18} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="mx-auto max-w-4xl px-4 mt-4">
+        {activeTab === 'dashboard' && <DashboardTab />}
+        {activeTab === 'campaigns' && <CampaignsTab />}
+        {activeTab === 'ration' && <RationTab />}
+        {activeTab === 'site' && <SiteConfigTab />}
+      </div>
+    </div>
+  );
+};
+
+/* ─── DASHBOARD ─── */
+const DashboardTab = () => {
+  const { campaigns, donations, food } = useApp();
+
+  const totalRaised = donations.reduce((sum, d) => sum + d.amount, 0);
+  const campaignDonations = donations.filter(d => d.type === 'campaign');
+  const foodDonations = donations.filter(d => d.type === 'food');
+
+  const pieData = campaigns.map(c => ({ name: c.name, value: c.raised }));
+  const barData = campaigns.map(c => ({ name: c.name.length > 12 ? c.name.slice(0, 12) + '…' : c.name, arrecadado: c.raised, meta: c.goal, doadores: c.donors }));
+
+  const stats = [
+    { label: 'Total Arrecadado', value: `R$ ${totalRaised.toLocaleString('pt-BR')}` },
+    { label: 'Doações', value: donations.length.toString() },
+    { label: 'Vaquinhas', value: campaigns.length.toString() },
+    { label: 'Ração (kg)', value: `${food.raisedKg}/${food.goalKg}` },
+  ];
+
+  // Most accessed = most donors
+  const topCampaign = [...campaigns].sort((a, b) => b.donors - a.donors)[0];
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {stats.map(s => (
+          <div key={s.label} className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className="text-xl font-extrabold text-foreground">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Top campaign */}
+      {topCampaign && (
+        <div className="rounded-2xl border border-border bg-accent/50 p-4">
+          <p className="text-xs text-muted-foreground mb-1">🏆 Vaquinha mais popular</p>
+          <p className="text-lg font-bold text-foreground">{topCampaign.name}</p>
+          <p className="text-sm text-muted-foreground">{topCampaign.donors} doadores · R${topCampaign.raised} arrecadados</p>
+        </div>
+      )}
+
+      {/* Pie Chart */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="text-sm font-bold text-foreground mb-3">Distribuição por Campanha</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name.slice(0, 8)}… ${(percent * 100).toFixed(0)}%`}>
+              {pieData.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(v: number) => `R$${v}`} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Bar Chart */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="text-sm font-bold text-foreground mb-3">Arrecadado vs Meta</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={barData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip formatter={(v: number) => `R$${v}`} />
+            <Bar dataKey="arrecadado" fill="hsl(145, 63%, 42%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="meta" fill="hsl(220, 13%, 91%)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Doadores chart */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="text-sm font-bold text-foreground mb-3">Doadores por Campanha</h3>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={barData} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
+            <XAxis type="number" tick={{ fontSize: 10 }} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={80} />
+            <Tooltip />
+            <Bar dataKey="doadores" fill="hsl(40, 90%, 55%)" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+/* ─── CAMPAIGNS CRUD ─── */
+const CampaignsTab = () => {
+  const { campaigns, addCampaign, updateCampaign, deleteCampaign, addCampaignUpdate } = useApp();
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showUpdateForm, setShowUpdateForm] = useState<string | null>(null);
 
   // Create form
-  const [newName, setNewName] = useState('');
-  const [newLocation, setNewLocation] = useState('');
-  const [newGoal, setNewGoal] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newStatus, setNewStatus] = useState<'Ativa' | 'Urgente'>('Ativa');
-
+  const [form, setForm] = useState({ name: '', location: '', goal: '', description: '', status: 'Ativa' as 'Ativa' | 'Urgente', image: '' });
   // Edit form
-  const [editGoal, setEditGoal] = useState('');
-
+  const [editForm, setEditForm] = useState<Partial<{ name: string; location: string; goal: string; description: string; status: 'Ativa' | 'Urgente'; image: string }>>({});
   // Update form
   const [updateText, setUpdateText] = useState('');
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     addCampaign({
-      name: newName,
-      image: dog1,
-      location: newLocation,
-      status: newStatus,
-      goal: parseInt(newGoal),
-      description: newDescription,
+      name: form.name,
+      image: form.image || dog1,
+      location: form.location,
+      status: form.status,
+      goal: parseInt(form.goal),
+      description: form.description,
     });
-    setNewName('');
-    setNewLocation('');
-    setNewGoal('');
-    setNewDescription('');
+    setForm({ name: '', location: '', goal: '', description: '', status: 'Ativa', image: '' });
     setShowCreate(false);
-    toast.success('Campanha criada com sucesso!');
+    toast.success('Campanha criada!');
   };
 
-  const handleEditGoal = (id: string) => {
-    updateCampaign(id, { goal: parseInt(editGoal) });
+  const startEdit = (c: typeof campaigns[0]) => {
+    setEditingId(c.id);
+    setEditForm({ name: c.name, location: c.location, goal: c.goal.toString(), description: c.description, status: c.status, image: c.image });
+  };
+
+  const handleSaveEdit = (id: string) => {
+    updateCampaign(id, {
+      name: editForm.name,
+      location: editForm.location,
+      goal: parseInt(editForm.goal || '0'),
+      description: editForm.description,
+      status: editForm.status,
+      ...(editForm.image ? { image: editForm.image } : {}),
+    });
     setEditingId(null);
-    setEditGoal('');
-    toast.success('Meta atualizada!');
+    toast.success('Campanha atualizada!');
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Tem certeza que deseja excluir "${name}"?`)) {
+      deleteCampaign(id);
+      toast.success('Campanha excluída!');
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (target === 'create') setForm(prev => ({ ...prev, image: dataUrl }));
+      else setEditForm(prev => ({ ...prev, image: dataUrl }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAddUpdate = (id: string) => {
-    addCampaignUpdate(id, {
-      text: updateText,
-      date: new Date().toISOString().split('T')[0],
-    });
+    addCampaignUpdate(id, { text: updateText, date: new Date().toISOString().split('T')[0] });
     setUpdateText('');
     setShowUpdateForm(null);
     toast.success('Atualização adicionada!');
   };
 
+  const inputCls = "w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+
   return (
-    <div className="pb-24">
-      <div className="bg-primary px-4 pb-6 pt-8">
-        <div className="flex items-center gap-3">
-          <Link to="/perfil" className="rounded-full bg-primary-foreground/20 p-2">
-            <ArrowLeft size={18} className="text-primary-foreground" />
-          </Link>
+    <div className="space-y-4 animate-slide-up">
+      <button
+        onClick={() => setShowCreate(!showCreate)}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground"
+      >
+        <Plus size={18} /> Nova Campanha
+      </button>
+
+      {/* Create form */}
+      {showCreate && (
+        <form onSubmit={handleCreate} className="space-y-3 rounded-2xl border border-border bg-card p-4 animate-slide-up">
+          <input type="text" placeholder="Nome da campanha" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} required />
+          <input type="text" placeholder="Localização" value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} className={inputCls} required />
+          <input type="number" placeholder="Meta (R$)" value={form.goal} onChange={e => setForm(p => ({ ...p, goal: e.target.value }))} className={inputCls} required />
+          <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as 'Ativa' | 'Urgente' }))} className={inputCls}>
+            <option value="Ativa">Ativa</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+          <textarea placeholder="Descrição" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} className={inputCls + " resize-none"} required />
           <div>
-            <h1 className="text-2xl font-extrabold text-primary-foreground">Admin</h1>
-            <p className="text-sm text-primary-foreground/80">Gerencie campanhas</p>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <Image size={16} /> Foto da campanha
+            </label>
+            <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'create')} className="mt-1 text-sm text-muted-foreground" />
+            {form.image && <img src={form.image} alt="Preview" className="mt-2 h-24 w-full rounded-xl object-cover" />}
           </div>
-        </div>
-      </div>
+          <button type="submit" className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">Criar Campanha</button>
+        </form>
+      )}
 
-      <div className="mx-auto max-w-lg px-4 -mt-3">
-        {/* Create button */}
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground"
-        >
-          <Plus size={18} /> Nova Campanha
-        </button>
-
-        {/* Create form */}
-        {showCreate && (
-          <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-4 animate-slide-up">
-            <input type="text" placeholder="Nome da campanha" value={newName} onChange={e => setNewName(e.target.value)}
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" required />
-            <input type="text" placeholder="Localização" value={newLocation} onChange={e => setNewLocation(e.target.value)}
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" required />
-            <input type="number" placeholder="Meta (R$)" value={newGoal} onChange={e => setNewGoal(e.target.value)}
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" required />
-            <select value={newStatus} onChange={e => setNewStatus(e.target.value as 'Ativa' | 'Urgente')}
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-              <option value="Ativa">Ativa</option>
-              <option value="Urgente">Urgente</option>
-            </select>
-            <textarea placeholder="Descrição" value={newDescription} onChange={e => setNewDescription(e.target.value)} rows={3}
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" required />
-            <button type="submit" className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
-              Criar Campanha
-            </button>
-          </form>
-        )}
-
-        {/* Campaign list */}
-        <div className="space-y-3">
-          {campaigns.map(c => (
-            <div key={c.id} className="rounded-2xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between">
+      {/* Campaign list */}
+      {campaigns.map(c => (
+        <div key={c.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+          {/* Card header with image */}
+          <div className="flex gap-3 p-4">
+            <img src={c.image} alt={c.name} className="h-16 w-16 rounded-xl object-cover flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-foreground">{c.name}</h3>
+                  <h3 className="text-sm font-bold text-foreground truncate">{c.name}</h3>
+                  <p className="text-xs text-muted-foreground">{c.location}</p>
                   <p className="text-xs text-muted-foreground">R${c.raised} / R${c.goal} · {c.donors} doadores</p>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => { setEditingId(editingId === c.id ? null : c.id); setEditGoal(c.goal.toString()); }}
-                    className="rounded-lg p-2 hover:bg-muted"
-                  >
-                    <Edit2 size={14} className="text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => setShowUpdateForm(showUpdateForm === c.id ? null : c.id)}
-                    className="rounded-lg p-2 hover:bg-muted"
-                  >
-                    <Plus size={14} className="text-muted-foreground" />
-                  </button>
-                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.status === 'Urgente' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                  {c.status}
+                </span>
               </div>
-
-              {editingId === c.id && (
-                <div className="mt-3 flex gap-2">
-                  <input type="number" value={editGoal} onChange={e => setEditGoal(e.target.value)}
-                    className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                  <button onClick={() => handleEditGoal(c.id)}
-                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">
-                    Salvar
-                  </button>
-                </div>
-              )}
-
-              {showUpdateForm === c.id && (
-                <div className="mt-3 space-y-2">
-                  <textarea placeholder="Texto da atualização..." value={updateText} onChange={e => setUpdateText(e.target.value)} rows={2}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
-                  <button onClick={() => handleAddUpdate(c.id)}
-                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">
-                    Adicionar
-                  </button>
-                </div>
-              )}
             </div>
-          ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex border-t border-border">
+            <button onClick={() => editingId === c.id ? setEditingId(null) : startEdit(c)} className="flex flex-1 items-center justify-center gap-1 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors">
+              <Edit2 size={13} /> Editar
+            </button>
+            <button onClick={() => setShowUpdateForm(showUpdateForm === c.id ? null : c.id)} className="flex flex-1 items-center justify-center gap-1 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors border-x border-border">
+              <Plus size={13} /> Atualização
+            </button>
+            <button onClick={() => handleDelete(c.id, c.name)} className="flex flex-1 items-center justify-center gap-1 py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5 transition-colors">
+              <Trash2 size={13} /> Excluir
+            </button>
+          </div>
+
+          {/* Edit form */}
+          {editingId === c.id && (
+            <div className="border-t border-border p-4 space-y-3 animate-slide-up">
+              <input type="text" value={editForm.name || ''} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="Nome" />
+              <input type="text" value={editForm.location || ''} onChange={e => setEditForm(p => ({ ...p, location: e.target.value }))} className={inputCls} placeholder="Localização" />
+              <input type="number" value={editForm.goal || ''} onChange={e => setEditForm(p => ({ ...p, goal: e.target.value }))} className={inputCls} placeholder="Meta (R$)" />
+              <select value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value as 'Ativa' | 'Urgente' }))} className={inputCls}>
+                <option value="Ativa">Ativa</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+              <textarea value={editForm.description || ''} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} rows={3} className={inputCls + " resize-none"} placeholder="Descrição" />
+              <div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  <Image size={16} /> Trocar foto
+                </label>
+                <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'edit')} className="mt-1 text-sm text-muted-foreground" />
+                {editForm.image && <img src={editForm.image} alt="Preview" className="mt-2 h-24 w-full rounded-xl object-cover" />}
+              </div>
+              <button onClick={() => handleSaveEdit(c.id)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+                <Save size={16} /> Salvar Alterações
+              </button>
+            </div>
+          )}
+
+          {/* Update form */}
+          {showUpdateForm === c.id && (
+            <div className="border-t border-border p-4 space-y-2 animate-slide-up">
+              <textarea placeholder="Texto da atualização..." value={updateText} onChange={e => setUpdateText(e.target.value)} rows={2} className={inputCls + " resize-none"} />
+              <button onClick={() => handleAddUpdate(c.id)} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Adicionar</button>
+            </div>
+          )}
         </div>
+      ))}
+    </div>
+  );
+};
+
+/* ─── RATION SETTINGS ─── */
+const RationTab = () => {
+  const { food, updateFoodSettings } = useApp();
+  const [goalKg, setGoalKg] = useState(food.goalKg.toString());
+  const [pricePerKg, setPricePerKg] = useState(food.pricePerKg.toString());
+
+  const handleSave = () => {
+    updateFoodSettings({ goalKg: parseInt(goalKg), pricePerKg: parseInt(pricePerKg) });
+    toast.success('Configurações de ração salvas!');
+  };
+
+  const inputCls = "w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+
+  return (
+    <div className="animate-slide-up">
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <h2 className="text-lg font-bold text-foreground">Configurações de Ração</h2>
+
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Meta mensal (kg)</label>
+          <input type="number" value={goalKg} onChange={e => setGoalKg(e.target.value)} className={inputCls + " mt-1"} />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Preço por kg (R$)</label>
+          <input type="number" value={pricePerKg} onChange={e => setPricePerKg(e.target.value)} className={inputCls + " mt-1"} />
+        </div>
+
+        <div className="rounded-xl bg-accent/50 p-3">
+          <p className="text-xs text-muted-foreground">Status atual</p>
+          <p className="text-sm font-bold text-foreground">{food.raisedKg}kg / {food.goalKg}kg · {food.donors} doadores</p>
+        </div>
+
+        <button onClick={handleSave} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+          <Save size={16} /> Salvar
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ─── SITE CONFIG ─── */
+const SiteConfigTab = () => {
+  const { siteConfig, updateSiteConfig } = useApp();
+  const [heroTitle, setHeroTitle] = useState(siteConfig.heroTitle);
+  const [heroSubtitle, setHeroSubtitle] = useState(siteConfig.heroSubtitle);
+  const [previewImage, setPreviewImage] = useState(siteConfig.heroImage);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPreviewImage(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    updateSiteConfig({ heroTitle, heroSubtitle, heroImage: previewImage });
+    toast.success('Configurações do site salvas!');
+  };
+
+  const inputCls = "w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+
+  return (
+    <div className="animate-slide-up">
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <h2 className="text-lg font-bold text-foreground">Configurar Site</h2>
+
+        {/* Banner preview */}
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Banner Principal</label>
+          <img src={previewImage} alt="Banner preview" className="mt-2 h-40 w-full rounded-xl object-cover" />
+          <input type="file" accept="image/*" onChange={handleImageUpload} className="mt-2 text-sm text-muted-foreground" />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Título do Banner</label>
+          <input type="text" value={heroTitle} onChange={e => setHeroTitle(e.target.value)} className={inputCls + " mt-1"} />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Subtítulo</label>
+          <input type="text" value={heroSubtitle} onChange={e => setHeroSubtitle(e.target.value)} className={inputCls + " mt-1"} />
+        </div>
+
+        <button onClick={handleSave} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+          <Save size={16} /> Salvar Configurações
+        </button>
       </div>
     </div>
   );
