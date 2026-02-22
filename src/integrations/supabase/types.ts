@@ -14,6 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_comments: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          date: string
+          id: string
+          name: string
+          text: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          date: string
+          id?: string
+          name: string
+          text: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_comments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_updates: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          date: string
+          id: string
+          image: string | null
+          text: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          date: string
+          id?: string
+          image?: string | null
+          text: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          image?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_updates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          description: string
+          donors: number
+          goal: number
+          id: string
+          image: string
+          location: string
+          name: string
+          raised: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          donors?: number
+          goal: number
+          id?: string
+          image: string
+          location: string
+          name: string
+          raised?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          donors?: number
+          goal?: number
+          id?: string
+          image?: string
+          location?: string
+          name?: string
+          raised?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       donations: {
         Row: {
           amount: number
@@ -53,6 +165,33 @@ export type Database = {
         }
         Relationships: []
       }
+      food_settings: {
+        Row: {
+          donors: number
+          goal_kg: number
+          id: string
+          price_per_kg: number
+          raised_kg: number
+          updated_at: string
+        }
+        Insert: {
+          donors?: number
+          goal_kg?: number
+          id?: string
+          price_per_kg?: number
+          raised_kg?: number
+          updated_at?: string
+        }
+        Update: {
+          donors?: number
+          goal_kg?: number
+          id?: string
+          price_per_kg?: number
+          raised_kg?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -77,6 +216,30 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      site_config: {
+        Row: {
+          hero_image: string
+          hero_subtitle: string
+          hero_title: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          hero_image?: string
+          hero_subtitle?: string
+          hero_title?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          hero_image?: string
+          hero_subtitle?: string
+          hero_title?: string
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }
