@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import dog1 from '@/assets/dog1.jpg';
 import dog2 from '@/assets/dog2.jpg';
 import dog3 from '@/assets/dog3.jpg';
@@ -150,22 +150,58 @@ const initialCampaigns: Campaign[] = [
   },
 ];
 
+const initialDonations: Donation[] = [
+  { id: '1', name: 'Maria Silva', email: 'maria@email.com', amount: 50, campaignId: '1', campaignName: 'Ajude o Caramelo', type: 'campaign', date: '2026-02-18' },
+  { id: '2', name: 'Pedro Santos', email: 'pedro@email.com', amount: 100, campaignId: '2', campaignName: 'Resgate da Luna', type: 'campaign', date: '2026-02-19' },
+  { id: '3', name: 'Ana Oliveira', email: 'ana@email.com', amount: 25, campaignId: null, campaignName: 'Ração', type: 'food', date: '2026-02-20' },
+];
+
+const initialFood: FoodData = { goalKg: 500, raisedKg: 280, donors: 43, pricePerKg: 10 };
+const initialProfile: UserProfile = { name: 'Visitante', email: 'visitante@email.com' };
+const initialSiteConfig: SiteConfig = {
+  heroImage: heroDog,
+  heroTitle: 'Juntos salvamos vidas 🐶',
+  heroSubtitle: 'Patas do Bem – ONG de resgate animal',
+};
+
+// ─── localStorage helpers ───
+const STORAGE_KEYS = {
+  campaigns: 'patasDoBem_campaigns',
+  donations: 'patasDoBem_donations',
+  food: 'patasDoBem_food',
+  profile: 'patasDoBem_profile',
+  siteConfig: 'patasDoBem_siteConfig',
+} as const;
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* ignore quota errors */ }
+}
+
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
-  const [donations, setDonations] = useState<Donation[]>([
-    { id: '1', name: 'Maria Silva', email: 'maria@email.com', amount: 50, campaignId: '1', campaignName: 'Ajude o Caramelo', type: 'campaign', date: '2026-02-18' },
-    { id: '2', name: 'Pedro Santos', email: 'pedro@email.com', amount: 100, campaignId: '2', campaignName: 'Resgate da Luna', type: 'campaign', date: '2026-02-19' },
-    { id: '3', name: 'Ana Oliveira', email: 'ana@email.com', amount: 25, campaignId: null, campaignName: 'Ração', type: 'food', date: '2026-02-20' },
-  ]);
-  const [food, setFood] = useState<FoodData>({ goalKg: 500, raisedKg: 280, donors: 43, pricePerKg: 10 });
-  const [profile, setProfile] = useState<UserProfile>({ name: 'Visitante', email: 'visitante@email.com' });
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>({
-    heroImage: heroDog,
-    heroTitle: 'Juntos salvamos vidas 🐶',
-    heroSubtitle: 'Patas do Bem – ONG de resgate animal',
-  });
+  const [campaigns, setCampaigns] = useState<Campaign[]>(() => loadFromStorage(STORAGE_KEYS.campaigns, initialCampaigns));
+  const [donations, setDonations] = useState<Donation[]>(() => loadFromStorage(STORAGE_KEYS.donations, initialDonations));
+  const [food, setFood] = useState<FoodData>(() => loadFromStorage(STORAGE_KEYS.food, initialFood));
+  const [profile, setProfile] = useState<UserProfile>(() => loadFromStorage(STORAGE_KEYS.profile, initialProfile));
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => loadFromStorage(STORAGE_KEYS.siteConfig, initialSiteConfig));
+
+  // Persist to localStorage on every change
+  useEffect(() => { saveToStorage(STORAGE_KEYS.campaigns, campaigns); }, [campaigns]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.donations, donations); }, [donations]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.food, food); }, [food]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.profile, profile); }, [profile]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.siteConfig, siteConfig); }, [siteConfig]);
 
   const addDonation = useCallback((donation: Omit<Donation, 'id' | 'date'>) => {
     const newDonation: Donation = {
