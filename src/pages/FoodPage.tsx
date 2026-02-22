@@ -17,8 +17,8 @@ const FoodPage = () => {
   const amount = kg * food.pricePerKg;
   const percent = Math.min(Math.round((food.raisedKg / food.goalKg) * 100), 100);
 
-  const handleDonation = (name: string, email: string) => {
-    addFoodDonation(kg, name, email);
+  const handleDonationSuccess = (name: string, donatedAmount: number) => {
+    addFoodDonation(kg, name, '');
     setShowModal(false);
     setCustomKg('');
     toast.success(`💚 ${name} doou ${kg}kg de ração!`, { duration: 4000 });
@@ -111,7 +111,8 @@ const FoodPage = () => {
         open={showModal}
         onClose={() => setShowModal(false)}
         amount={amount}
-        onConfirm={handleDonation}
+        campaignName="Ração"
+        onSuccess={handleDonationSuccess}
       />
     </div>
   );

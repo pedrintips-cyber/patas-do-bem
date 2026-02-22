@@ -32,19 +32,18 @@ const CampaignDetailPage = () => {
 
   const donationAmount = customAmount ? parseInt(customAmount) : selectedAmount;
 
-  const handleDonation = (name: string, email: string, orderBump: boolean) => {
-    const finalAmount = orderBump ? donationAmount + 6.99 : donationAmount;
+  const handleDonationSuccess = (name: string, donatedAmount: number) => {
     addDonation({
       name,
-      email,
-      amount: finalAmount,
+      email: '',
+      amount: donatedAmount,
       campaignId: campaign.id,
       campaignName: campaign.name,
       type: 'campaign',
     });
     setShowModal(false);
     setCustomAmount('');
-    toast.success(`💚 ${name} doou R$${finalAmount.toFixed(2)}`, { duration: 4000 });
+    toast.success(`💚 ${name} doou R$${donatedAmount.toFixed(2)}`, { duration: 4000 });
   };
 
   const handleComment = (e: React.FormEvent) => {
@@ -201,7 +200,9 @@ const CampaignDetailPage = () => {
         open={showModal}
         onClose={() => setShowModal(false)}
         amount={donationAmount}
-        onConfirm={handleDonation}
+        campaignId={campaign.id}
+        campaignName={campaign.name}
+        onSuccess={handleDonationSuccess}
       />
     </div>
   );
