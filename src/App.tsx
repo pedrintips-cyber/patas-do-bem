@@ -16,30 +16,32 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AppProvider>
-        <Sonner position="top-center" />
-        <BrowserRouter>
-          <div className="mx-auto min-h-screen max-w-2xl bg-background">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/vaquinhas" element={<CampaignsPage />} />
-              <Route path="/vaquinhas/:id" element={<CampaignDetailPage />} />
-              <Route path="/racao" element={<FoodPage />} />
-              <Route path="/doacoes" element={<DonationsPage />} />
-              <Route path="/perfil" element={<ProfilePage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <BottomNav />
-            <SocialProofNotifications />
-          </div>
-        </BrowserRouter>
-      </AppProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AppProvider>
+          <Sonner position="top-center" />
+          <BrowserRouter>
+            <div className="mx-auto min-h-screen max-w-2xl bg-background">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/vaquinhas" element={<CampaignsPage />} />
+                <Route path="/vaquinhas/:id" element={<CampaignDetailPage />} />
+                <Route path="/racao" element={<FoodPage />} />
+                <Route path="/doacoes" element={<DonationsPage />} />
+                <Route path="/perfil" element={<ProfilePage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <BottomNav />
+              <SocialProofNotifications />
+            </div>
+          </BrowserRouter>
+        </AppProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
