@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import dog1 from '@/assets/dog1.jpg';
-import dog2 from '@/assets/dog2.jpg';
-import dog3 from '@/assets/dog3.jpg';
-import dog4 from '@/assets/dog4.jpg';
+import { supabase } from '@/integrations/supabase/client';
 import heroDog from '@/assets/hero-dog.jpg';
 
 export interface Campaign {
@@ -68,18 +65,20 @@ interface AppState {
   food: FoodData;
   profile: UserProfile;
   siteConfig: SiteConfig;
+  loading: boolean;
   addDonation: (donation: Omit<Donation, 'id' | 'date'>) => void;
   addFoodDonation: (kg: number, name: string, email: string) => void;
   addCampaign: (campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => void;
   updateCampaign: (id: string, data: Partial<Campaign>) => void;
   deleteCampaign: (id: string) => void;
-  addComment: (campaignId: string, name: string, text: string) => void;
   addCampaignUpdate: (campaignId: string, update: Omit<CampaignUpdate, 'id'>) => void;
   setProfile: (profile: UserProfile) => void;
   updateFoodSettings: (settings: Partial<FoodData>) => void;
   updateSiteConfig: (config: Partial<SiteConfig>) => void;
+  refreshData: () => Promise<void>;
 }
 
+// Pre-generated fake comments for new campaigns
 const fakeCommentPool = [
   { name: 'Maria Silva', text: 'Força! 💚 Que Deus abençoe!' },
   { name: 'Pedro Santos', text: 'Doei com o coração. Melhoras!' },
@@ -95,246 +94,273 @@ const fakeCommentPool = [
   { name: 'Diego Martins', text: 'Sempre apoiarei essa causa!' },
 ];
 
-function generateFakeComments(): Comment[] {
-  const count = 3 + Math.floor(Math.random() * 4); // 3-6 comments
+function generateFakeComments() {
+  const count = 3 + Math.floor(Math.random() * 4);
   const shuffled = [...fakeCommentPool].sort(() => Math.random() - 0.5);
   const daysAgo = [1, 2, 3, 5, 7, 10, 14];
   return shuffled.slice(0, count).map((c, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (daysAgo[i] || i + 1));
-    return { id: `fake-${i}`, name: c.name, text: c.text, date: d.toISOString().split('T')[0] };
+    return { name: c.name, text: c.text, date: d.toISOString().split('T')[0] };
   });
-}
-
-const initialCampaigns: Campaign[] = [
-  {
-    id: '1',
-    name: 'Ajude o Caramelo',
-    image: dog1,
-    location: 'São Paulo, SP',
-    status: 'Urgente',
-    goal: 2000,
-    raised: 1250,
-    donors: 47,
-    description: 'Caramelo foi encontrado na beira de uma rodovia, com a pata traseira fraturada. Ele precisa de uma cirurgia urgente para voltar a andar. Com sua ajuda, vamos dar uma nova chance a esse guerreiro! O valor arrecadado será utilizado para cobrir os custos da cirurgia, internação, medicamentos e acompanhamento veterinário.',
-    updates: [
-      { id: '1', text: 'Caramelo passou pela primeira consulta e está estável!', date: '2026-02-18' },
-      { id: '2', text: 'Cirurgia agendada para próxima semana. Continuem doando!', date: '2026-02-20' },
-    ],
-    comments: [
-      { id: '1', name: 'Maria Silva', text: 'Força Caramelo! 💚', date: '2026-02-19' },
-      { id: '2', name: 'Pedro Santos', text: 'Doei com o coração. Melhoras!', date: '2026-02-20' },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Resgate da Luna',
-    image: dog2,
-    location: 'Rio de Janeiro, RJ',
-    status: 'Ativa',
-    goal: 3000,
-    raised: 890,
-    donors: 32,
-    description: 'Luna é uma cachorrinha dócil que foi abandonada grávida. Ela precisa de cuidados especiais para o parto e para os filhotes. Ajude-nos a garantir que Luna e seus bebês tenham um começo de vida seguro e saudável.',
-    updates: [
-      { id: '1', text: 'Luna está em um lar temporário recebendo cuidados.', date: '2026-02-17' },
-    ],
-    comments: [
-      { id: '1', name: 'Ana Oliveira', text: 'Que linda! Já doei ❤️', date: '2026-02-18' },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Thor precisa de você',
-    image: dog3,
-    location: 'Belo Horizonte, MG',
-    status: 'Ativa',
-    goal: 1500,
-    raised: 420,
-    donors: 18,
-    description: 'Thor é um filhote que nasceu com uma condição cardíaca rara. Ele precisa de um tratamento contínuo para ter qualidade de vida. Cada doação conta para manter Thor forte e feliz!',
-    updates: [],
-    comments: [],
-  },
-  {
-    id: '4',
-    name: 'Operação Neve',
-    image: dog4,
-    location: 'Curitiba, PR',
-    status: 'Urgente',
-    goal: 2500,
-    raised: 1800,
-    donors: 65,
-    description: 'Neve foi resgatada de uma situação de maus-tratos. Está se recuperando, mas ainda precisa de cirurgia reconstrutiva e muito carinho. Ajude Neve a recomeçar!',
-    updates: [
-      { id: '1', text: 'Neve já come sozinha e está ganhando peso!', date: '2026-02-19' },
-      { id: '2', text: 'Exames mostram evolução positiva!', date: '2026-02-21' },
-    ],
-    comments: [
-      { id: '1', name: 'Carlos Mendes', text: 'Neve merece todo amor do mundo!', date: '2026-02-20' },
-    ],
-  },
-];
-
-const initialDonations: Donation[] = [
-  { id: '1', name: 'Maria Silva', email: 'maria@email.com', amount: 50, campaignId: '1', campaignName: 'Ajude o Caramelo', type: 'campaign', date: '2026-02-18' },
-  { id: '2', name: 'Pedro Santos', email: 'pedro@email.com', amount: 100, campaignId: '2', campaignName: 'Resgate da Luna', type: 'campaign', date: '2026-02-19' },
-  { id: '3', name: 'Ana Oliveira', email: 'ana@email.com', amount: 25, campaignId: null, campaignName: 'Ração', type: 'food', date: '2026-02-20' },
-];
-
-const initialFood: FoodData = { goalKg: 500, raisedKg: 280, donors: 43, pricePerKg: 10 };
-const initialProfile: UserProfile = { name: 'Visitante', email: 'visitante@email.com' };
-const initialSiteConfig: SiteConfig = {
-  heroImage: heroDog,
-  heroTitle: 'Juntos salvamos vidas 🐶',
-  heroSubtitle: 'Patas do Bem – ONG de resgate animal',
-};
-
-// ─── localStorage helpers ───
-const STORAGE_KEYS = {
-  campaigns: 'patasDoBem_campaigns',
-  donations: 'patasDoBem_donations',
-  food: 'patasDoBem_food',
-  profile: 'patasDoBem_profile',
-  siteConfig: 'patasDoBem_siteConfig',
-} as const;
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return fallback;
-}
-
-function saveToStorage(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch { /* ignore quota errors */ }
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(() => loadFromStorage(STORAGE_KEYS.campaigns, initialCampaigns));
-  const [donations, setDonations] = useState<Donation[]>(() => loadFromStorage(STORAGE_KEYS.donations, initialDonations));
-  const [food, setFood] = useState<FoodData>(() => loadFromStorage(STORAGE_KEYS.food, initialFood));
-  const [profile, setProfile] = useState<UserProfile>(() => loadFromStorage(STORAGE_KEYS.profile, initialProfile));
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => loadFromStorage(STORAGE_KEYS.siteConfig, initialSiteConfig));
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [food, setFood] = useState<FoodData>({ goalKg: 500, raisedKg: 0, donors: 0, pricePerKg: 10 });
+  const [profile, setProfile] = useState<UserProfile>({ name: 'Visitante', email: '' });
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>({
+    heroImage: heroDog,
+    heroTitle: 'Juntos salvamos vidas 🐶',
+    heroSubtitle: 'Patas do Bem – ONG de resgate animal',
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Persist to localStorage on every change
-  useEffect(() => { saveToStorage(STORAGE_KEYS.campaigns, campaigns); }, [campaigns]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.donations, donations); }, [donations]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.food, food); }, [food]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.profile, profile); }, [profile]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.siteConfig, siteConfig); }, [siteConfig]);
+  const fetchAll = useCallback(async () => {
+    try {
+      // Fetch campaigns with updates and comments
+      const { data: campaignsData } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const addDonation = useCallback((donation: Omit<Donation, 'id' | 'date'>) => {
-    const newDonation: Donation = {
-      ...donation,
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-    };
-    setDonations(prev => [newDonation, ...prev]);
+      if (campaignsData) {
+        const campaignsWithRelations: Campaign[] = await Promise.all(
+          campaignsData.map(async (c: any) => {
+            const { data: updates } = await supabase
+              .from('campaign_updates')
+              .select('*')
+              .eq('campaign_id', c.id)
+              .order('created_at', { ascending: true });
 
-    if (donation.campaignId) {
-      setCampaigns(prev =>
-        prev.map(c =>
-          c.id === donation.campaignId
-            ? { ...c, raised: c.raised + donation.amount, donors: c.donors + 1 }
-            : c
-        )
-      );
+            const { data: comments } = await supabase
+              .from('campaign_comments')
+              .select('*')
+              .eq('campaign_id', c.id)
+              .order('created_at', { ascending: true });
+
+            return {
+              id: c.id,
+              name: c.name,
+              image: c.image,
+              location: c.location,
+              status: c.status as 'Ativa' | 'Urgente',
+              goal: c.goal,
+              raised: c.raised,
+              donors: c.donors,
+              description: c.description,
+              updates: (updates || []).map((u: any) => ({ id: u.id, text: u.text, date: u.date, image: u.image })),
+              comments: (comments || []).map((cm: any) => ({ id: cm.id, name: cm.name, text: cm.text, date: cm.date })),
+            };
+          })
+        );
+        setCampaigns(campaignsWithRelations);
+      }
+
+      // Fetch donations
+      const { data: donationsData } = await supabase
+        .from('donations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (donationsData) {
+        setDonations(donationsData.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          email: d.email || '',
+          amount: d.amount,
+          campaignId: d.campaign_id,
+          campaignName: d.campaign_name || '',
+          type: d.type as 'campaign' | 'food',
+          date: d.created_at.split('T')[0],
+        })));
+      }
+
+      // Fetch food settings
+      const { data: foodData } = await supabase
+        .from('food_settings')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (foodData) {
+        setFood({
+          goalKg: (foodData as any).goal_kg,
+          raisedKg: (foodData as any).raised_kg,
+          donors: (foodData as any).donors,
+          pricePerKg: (foodData as any).price_per_kg,
+        });
+      }
+
+      // Fetch site config
+      const { data: siteData } = await supabase
+        .from('site_config')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (siteData) {
+        setSiteConfig({
+          heroImage: (siteData as any).hero_image || heroDog,
+          heroTitle: (siteData as any).hero_title,
+          heroSubtitle: (siteData as any).hero_subtitle,
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const addFoodDonation = useCallback((kg: number, name: string, email: string) => {
-    setFood(prev => {
-      const amount = kg * prev.pricePerKg;
-      const newDonation: Donation = {
-        id: Date.now().toString(),
-        name,
-        email,
-        amount,
-        campaignId: null,
-        campaignName: 'Ração',
-        type: 'food',
-        date: new Date().toISOString().split('T')[0],
-      };
-      setDonations(prevD => [newDonation, ...prevD]);
-      return { ...prev, raisedKg: prev.raisedKg + kg, donors: prev.donors + 1 };
-    });
-  }, []);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const addCampaign = useCallback((campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => {
-    // Seed with fake progress (15-20% of goal) and pre-generated comments
-    const seedPercent = 0.15 + Math.random() * 0.05; // 15-20%
+  const addDonation = useCallback(async (donation: Omit<Donation, 'id' | 'date'>) => {
+    const { error } = await supabase.from('donations').insert({
+      name: donation.name,
+      email: donation.email || null,
+      amount: donation.amount,
+      campaign_id: donation.campaignId,
+      campaign_name: donation.campaignName,
+      type: donation.type,
+    });
+
+    if (!error) {
+      // If campaign donation, update campaign raised/donors
+      if (donation.campaignId) {
+        const campaign = campaigns.find(c => c.id === donation.campaignId);
+        if (campaign) {
+          await supabase.from('campaigns').update({
+            raised: campaign.raised + donation.amount,
+            donors: campaign.donors + 1,
+          }).eq('id', donation.campaignId);
+        }
+      }
+      await fetchAll();
+    }
+  }, [campaigns, fetchAll]);
+
+  const addFoodDonation = useCallback(async (kg: number, name: string, email: string) => {
+    const amount = kg * food.pricePerKg;
+
+    await supabase.from('donations').insert({
+      name,
+      email: email || null,
+      amount,
+      campaign_id: null,
+      campaign_name: 'Ração',
+      type: 'food',
+    });
+
+    await supabase.from('food_settings').update({
+      raised_kg: food.raisedKg + kg,
+      donors: food.donors + 1,
+    }).eq('id', (await supabase.from('food_settings').select('id').limit(1).single()).data?.id);
+
+    await fetchAll();
+  }, [food, fetchAll]);
+
+  const addCampaign = useCallback(async (campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => {
+    // Seed with fake progress (15-20% of goal)
+    const seedPercent = 0.15 + Math.random() * 0.05;
     const seedRaised = Math.round(campaign.goal * seedPercent);
     const seedDonors = Math.floor(seedRaised / 15) + Math.floor(Math.random() * 10) + 5;
 
-    const newCampaign: Campaign = {
-      ...campaign,
-      id: Date.now().toString(),
+    const { data, error } = await supabase.from('campaigns').insert({
+      name: campaign.name,
+      image: campaign.image,
+      location: campaign.location,
+      status: campaign.status,
+      goal: campaign.goal,
       raised: seedRaised,
       donors: seedDonors,
-      updates: [],
-      comments: generateFakeComments(),
-    };
-    setCampaigns(prev => [newCampaign, ...prev]);
-  }, []);
+      description: campaign.description,
+    }).select('id').single();
 
-  const updateCampaign = useCallback((id: string, data: Partial<Campaign>) => {
-    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  }, []);
+    if (!error && data) {
+      // Insert fake comments
+      const fakeComments = generateFakeComments();
+      const commentsToInsert = fakeComments.map(c => ({
+        campaign_id: data.id,
+        name: c.name,
+        text: c.text,
+        date: c.date,
+      }));
+      await supabase.from('campaign_comments').insert(commentsToInsert);
+      await fetchAll();
+    }
+  }, [fetchAll]);
 
-  const deleteCampaign = useCallback((id: string) => {
-    setCampaigns(prev => prev.filter(c => c.id !== id));
-  }, []);
+  const updateCampaign = useCallback(async (id: string, data: Partial<Campaign>) => {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.goal !== undefined) updateData.goal = data.goal;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.image !== undefined) updateData.image = data.image;
+    if (data.raised !== undefined) updateData.raised = data.raised;
+    if (data.donors !== undefined) updateData.donors = data.donors;
 
-  const addComment = useCallback((campaignId: string, name: string, text: string) => {
-    setCampaigns(prev =>
-      prev.map(c =>
-        c.id === campaignId
-          ? {
-              ...c,
-              comments: [...c.comments, {
-                id: Date.now().toString(),
-                name,
-                text,
-                date: new Date().toISOString().split('T')[0],
-              }],
-            }
-          : c
-      )
-    );
-  }, []);
+    if (Object.keys(updateData).length > 0) {
+      await supabase.from('campaigns').update(updateData).eq('id', id);
+      await fetchAll();
+    }
+  }, [fetchAll]);
 
-  const addCampaignUpdate = useCallback((campaignId: string, update: Omit<CampaignUpdate, 'id'>) => {
-    setCampaigns(prev =>
-      prev.map(c =>
-        c.id === campaignId
-          ? {
-              ...c,
-              updates: [...c.updates, { ...update, id: Date.now().toString() }],
-            }
-          : c
-      )
-    );
-  }, []);
+  const deleteCampaign = useCallback(async (id: string) => {
+    await supabase.from('campaigns').delete().eq('id', id);
+    await fetchAll();
+  }, [fetchAll]);
 
-  const updateFoodSettings = useCallback((settings: Partial<FoodData>) => {
-    setFood(prev => ({ ...prev, ...settings }));
-  }, []);
+  const addCampaignUpdate = useCallback(async (campaignId: string, update: Omit<CampaignUpdate, 'id'>) => {
+    await supabase.from('campaign_updates').insert({
+      campaign_id: campaignId,
+      text: update.text,
+      date: update.date,
+      image: update.image || null,
+    });
+    await fetchAll();
+  }, [fetchAll]);
 
-  const updateSiteConfig = useCallback((config: Partial<SiteConfig>) => {
-    setSiteConfig(prev => ({ ...prev, ...config }));
-  }, []);
+  const updateFoodSettings = useCallback(async (settings: Partial<FoodData>) => {
+    const updateData: any = {};
+    if (settings.goalKg !== undefined) updateData.goal_kg = settings.goalKg;
+    if (settings.pricePerKg !== undefined) updateData.price_per_kg = settings.pricePerKg;
+    if (settings.raisedKg !== undefined) updateData.raised_kg = settings.raisedKg;
+    if (settings.donors !== undefined) updateData.donors = settings.donors;
+
+    const { data: current } = await supabase.from('food_settings').select('id').limit(1).single();
+    if (current) {
+      await supabase.from('food_settings').update(updateData).eq('id', current.id);
+      await fetchAll();
+    }
+  }, [fetchAll]);
+
+  const updateSiteConfig = useCallback(async (config: Partial<SiteConfig>) => {
+    const updateData: any = {};
+    if (config.heroTitle !== undefined) updateData.hero_title = config.heroTitle;
+    if (config.heroSubtitle !== undefined) updateData.hero_subtitle = config.heroSubtitle;
+    if (config.heroImage !== undefined) updateData.hero_image = config.heroImage;
+
+    const { data: current } = await supabase.from('site_config').select('id').limit(1).single();
+    if (current) {
+      await supabase.from('site_config').update(updateData).eq('id', current.id);
+      await fetchAll();
+    }
+  }, [fetchAll]);
 
   return (
     <AppContext.Provider value={{
-      campaigns, donations, food, profile, siteConfig,
+      campaigns, donations, food, profile, siteConfig, loading,
       addDonation, addFoodDonation, addCampaign, updateCampaign, deleteCampaign,
-      addComment, addCampaignUpdate, setProfile, updateFoodSettings, updateSiteConfig,
+      addCampaignUpdate, setProfile, updateFoodSettings, updateSiteConfig,
+      refreshData: fetchAll,
     }}>
       {children}
     </AppContext.Provider>

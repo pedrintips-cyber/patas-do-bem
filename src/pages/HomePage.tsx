@@ -6,9 +6,9 @@ import CampaignCard from '@/components/CampaignCard';
 const HomePage = () => {
   const { campaigns, donations, siteConfig } = useApp();
 
-  const totalRaised = campaigns.reduce((sum, c) => sum + c.raised, 0);
-  const totalDonors = new Set(donations.map(d => d.email)).size + 120;
-  const totalDogs = campaigns.length + 23;
+  const totalRaised = donations.reduce((sum, d) => sum + d.amount, 0);
+  const totalDonors = new Set(donations.map(d => d.email).filter(Boolean)).size;
+  const totalDogs = campaigns.length;
 
   const stats = [
     { icon: Heart, label: 'Arrecadado', value: `R$ ${totalRaised.toLocaleString('pt-BR')}` },
