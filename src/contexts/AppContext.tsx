@@ -3,6 +3,7 @@ import dog1 from '@/assets/dog1.jpg';
 import dog2 from '@/assets/dog2.jpg';
 import dog3 from '@/assets/dog3.jpg';
 import dog4 from '@/assets/dog4.jpg';
+import heroDog from '@/assets/hero-dog.jpg';
 
 export interface Campaign {
   id: string;
@@ -47,6 +48,13 @@ export interface FoodData {
   goalKg: number;
   raisedKg: number;
   donors: number;
+  pricePerKg: number;
+}
+
+export interface SiteConfig {
+  heroImage: string;
+  heroTitle: string;
+  heroSubtitle: string;
 }
 
 export interface UserProfile {
@@ -59,13 +67,17 @@ interface AppState {
   donations: Donation[];
   food: FoodData;
   profile: UserProfile;
+  siteConfig: SiteConfig;
   addDonation: (donation: Omit<Donation, 'id' | 'date'>) => void;
   addFoodDonation: (kg: number, name: string, email: string) => void;
   addCampaign: (campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => void;
   updateCampaign: (id: string, data: Partial<Campaign>) => void;
+  deleteCampaign: (id: string) => void;
   addComment: (campaignId: string, name: string, text: string) => void;
   addCampaignUpdate: (campaignId: string, update: Omit<CampaignUpdate, 'id'>) => void;
   setProfile: (profile: UserProfile) => void;
+  updateFoodSettings: (settings: Partial<FoodData>) => void;
+  updateSiteConfig: (config: Partial<SiteConfig>) => void;
 }
 
 const initialCampaigns: Campaign[] = [
@@ -147,8 +159,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     { id: '2', name: 'Pedro Santos', email: 'pedro@email.com', amount: 100, campaignId: '2', campaignName: 'Resgate da Luna', type: 'campaign', date: '2026-02-19' },
     { id: '3', name: 'Ana Oliveira', email: 'ana@email.com', amount: 25, campaignId: null, campaignName: 'Ração', type: 'food', date: '2026-02-20' },
   ]);
-  const [food, setFood] = useState<FoodData>({ goalKg: 500, raisedKg: 280, donors: 43 });
+  const [food, setFood] = useState<FoodData>({ goalKg: 500, raisedKg: 280, donors: 43, pricePerKg: 10 });
   const [profile, setProfile] = useState<UserProfile>({ name: 'Visitante', email: 'visitante@email.com' });
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>({
+    heroImage: heroDog,
+    heroTitle: 'Juntos salvamos vidas 🐶',
+    heroSubtitle: 'Patas do Bem – ONG de resgate animal',
+  });
 
   const addDonation = useCallback((donation: Omit<Donation, 'id' | 'date'>) => {
     const newDonation: Donation = {
@@ -170,19 +187,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addFoodDonation = useCallback((kg: number, name: string, email: string) => {
-    const amount = kg * 10;
-    setFood(prev => ({ ...prev, raisedKg: prev.raisedKg + kg, donors: prev.donors + 1 }));
-    const newDonation: Donation = {
-      id: Date.now().toString(),
-      name,
-      email,
-      amount,
-      campaignId: null,
-      campaignName: 'Ração',
-      type: 'food',
-      date: new Date().toISOString().split('T')[0],
-    };
-    setDonations(prev => [newDonation, ...prev]);
+    setFood(prev => {
+      const amount = kg * prev.pricePerKg;
+      const newDonation: Donation = {
+        id: Date.now().toString(),
+        name,
+        email,
+        amount,
+        campaignId: null,
+        campaignName: 'Ração',
+        type: 'food',
+        date: new Date().toISOString().split('T')[0],
+      };
+      setDonations(prevD => [newDonation, ...prevD]);
+      return { ...prev, raisedKg: prev.raisedKg + kg, donors: prev.donors + 1 };
+    });
   }, []);
 
   const addCampaign = useCallback((campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => {
@@ -199,6 +218,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updateCampaign = useCallback((id: string, data: Partial<Campaign>) => {
     setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  }, []);
+
+  const deleteCampaign = useCallback((id: string) => {
+    setCampaigns(prev => prev.filter(c => c.id !== id));
   }, []);
 
   const addComment = useCallback((campaignId: string, name: string, text: string) => {
@@ -232,11 +255,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
+  const updateFoodSettings = useCallback((settings: Partial<FoodData>) => {
+    setFood(prev => ({ ...prev, ...settings }));
+  }, []);
+
+  const updateSiteConfig = useCallback((config: Partial<SiteConfig>) => {
+    setSiteConfig(prev => ({ ...prev, ...config }));
+  }, []);
+
   return (
     <AppContext.Provider value={{
-      campaigns, donations, food, profile,
-      addDonation, addFoodDonation, addCampaign, updateCampaign,
-      addComment, addCampaignUpdate, setProfile,
+      campaigns, donations, food, profile, siteConfig,
+      addDonation, addFoodDonation, addCampaign, updateCampaign, deleteCampaign,
+      addComment, addCampaignUpdate, setProfile, updateFoodSettings, updateSiteConfig,
     }}>
       {children}
     </AppContext.Provider>

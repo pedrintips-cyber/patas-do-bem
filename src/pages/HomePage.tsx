@@ -1,11 +1,10 @@
 import { useApp } from '@/contexts/AppContext';
 import { Heart, Dog, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import heroDog from '@/assets/hero-dog.jpg';
 import CampaignCard from '@/components/CampaignCard';
 
 const HomePage = () => {
-  const { campaigns, donations } = useApp();
+  const { campaigns, donations, siteConfig } = useApp();
 
   const totalRaised = campaigns.reduce((sum, c) => sum + c.raised, 0);
   const totalDonors = new Set(donations.map(d => d.email)).size + 120;
@@ -21,14 +20,14 @@ const HomePage = () => {
     <div className="pb-24">
       {/* Hero */}
       <div className="relative overflow-hidden">
-        <img src={heroDog} alt="Cachorro resgatado" className="h-64 sm:h-80 w-full object-cover" />
+        <img src={siteConfig.heroImage} alt="Cachorro resgatado" className="h-64 sm:h-80 w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-5">
           <h1 className="text-3xl font-extrabold text-primary-foreground drop-shadow-lg">
-            Juntos salvamos vidas 🐶
+            {siteConfig.heroTitle}
           </h1>
           <p className="mt-1 text-sm font-medium text-primary-foreground/80">
-            Patas do Bem – ONG de resgate animal
+            {siteConfig.heroSubtitle}
           </p>
           <Link
             to="/vaquinhas"
