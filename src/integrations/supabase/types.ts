@@ -14,6 +14,133 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_commissions: {
+        Row: {
+          affiliate_id: string
+          affiliate_link_id: string
+          amount: number
+          created_at: string
+          donation_id: string
+          id: string
+        }
+        Insert: {
+          affiliate_id: string
+          affiliate_link_id: string
+          amount: number
+          created_at?: string
+          donation_id: string
+          id?: string
+        }
+        Update: {
+          affiliate_id?: string
+          affiliate_link_id?: string
+          amount?: number
+          created_at?: string
+          donation_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_link_id_fkey"
+            columns: ["affiliate_link_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_links: {
+        Row: {
+          affiliate_id: string
+          campaign_id: string | null
+          clicks: number
+          code: string
+          created_at: string
+          id: string
+          link_type: string
+        }
+        Insert: {
+          affiliate_id: string
+          campaign_id?: string | null
+          clicks?: number
+          code: string
+          created_at?: string
+          id?: string
+          link_type?: string
+        }
+        Update: {
+          affiliate_id?: string
+          campaign_id?: string | null
+          clicks?: number
+          code?: string
+          created_at?: string
+          id?: string
+          link_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_links_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          pix_key: string | null
+          pix_key_type: string | null
+          total_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          total_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          total_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaign_comments: {
         Row: {
           campaign_id: string
@@ -128,6 +255,7 @@ export type Database = {
       }
       donations: {
         Row: {
+          affiliate_code: string | null
           amount: number
           campaign_id: string | null
           campaign_name: string | null
@@ -136,10 +264,12 @@ export type Database = {
           id: string
           name: string
           order_bump: boolean
+          phone: string | null
           type: string
           user_id: string | null
         }
         Insert: {
+          affiliate_code?: string | null
           amount: number
           campaign_id?: string | null
           campaign_name?: string | null
@@ -148,10 +278,12 @@ export type Database = {
           id?: string
           name: string
           order_bump?: boolean
+          phone?: string | null
           type?: string
           user_id?: string | null
         }
         Update: {
+          affiliate_code?: string | null
           amount?: number
           campaign_id?: string | null
           campaign_name?: string | null
@@ -160,6 +292,7 @@ export type Database = {
           id?: string
           name?: string
           order_bump?: boolean
+          phone?: string | null
           type?: string
           user_id?: string | null
         }
@@ -191,6 +324,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      page_views: {
+        Row: {
+          affiliate_code: string | null
+          campaign_id: string | null
+          created_at: string
+          id: string
+          page: string
+          referrer: string | null
+        }
+        Insert: {
+          affiliate_code?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          page: string
+          referrer?: string | null
+        }
+        Update: {
+          affiliate_code?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          page?: string
+          referrer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_views_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -260,6 +428,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      withdrawal_requests: {
+        Row: {
+          admin_notes: string | null
+          affiliate_id: string
+          amount: number
+          created_at: string
+          id: string
+          pix_key: string
+          pix_key_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          affiliate_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          pix_key: string
+          pix_key_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          affiliate_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          pix_key?: string
+          pix_key_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
