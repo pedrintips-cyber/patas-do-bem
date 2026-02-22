@@ -12,7 +12,14 @@ interface DonationModalProps {
   onSuccess?: (name: string, amount: number) => void;
 }
 
-const ORDER_BUMP_PRICE = 6.99;
+// Dynamic order bump based on donation amount
+function getOrderBumpPrice(amount: number): number {
+  if (amount <= 20) return 2.99;
+  if (amount <= 50) return 4.99;
+  if (amount <= 100) return 6.99;
+  if (amount <= 200) return 9.99;
+  return 12.99;
+}
 
 type Step = 'select' | 'form' | 'pix' | 'confirmed';
 
@@ -28,7 +35,8 @@ const DonationModal = ({ open, onClose, amount, campaignId, campaignName, onSucc
   const [copied, setCopied] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const finalAmount = orderBump ? amount + ORDER_BUMP_PRICE : amount;
+  const orderBumpPrice = getOrderBumpPrice(amount);
+  const finalAmount = orderBump ? amount + orderBumpPrice : amount;
   const amountInCentavos = Math.round(finalAmount * 100);
 
   // Cleanup polling on unmount
@@ -220,7 +228,7 @@ const DonationModal = ({ open, onClose, amount, campaignId, campaignName, onSucc
                 <div className="flex items-center gap-2 mb-1">
                   <Gift size={16} className="text-primary" />
                   <span className="text-sm font-extrabold text-foreground">
-                    SIM! Quero adicionar +R$ {ORDER_BUMP_PRICE.toFixed(2).replace('.', ',')}
+                    SIM! Quero adicionar +R$ {orderBumpPrice.toFixed(2).replace('.', ',')}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">

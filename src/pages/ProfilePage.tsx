@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Mail, Heart, LogOut, LogIn, Trophy } from 'lucide-react';
+import { User, Mail, Heart, LogOut, LogIn, Trophy, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 
@@ -103,6 +103,18 @@ const ProfilePage = () => {
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground">Ranking de Doadores</p>
             <p className="text-[10px] text-muted-foreground">Veja sua posição entre os maiores doadores</p>
+          </div>
+        </Link>
+
+        {/* Affiliate link */}
+        <Link
+          to="/afiliado"
+          className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary transition-colors"
+        >
+          <Users size={20} className="text-primary" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">Painel de Afiliado</p>
+            <p className="text-[10px] text-muted-foreground">Ganhe 80% de comissão divulgando campanhas</p>
           </div>
         </Link>
 

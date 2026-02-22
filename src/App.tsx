@@ -6,6 +6,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
 import SocialProofNotifications from "@/components/SocialProofNotifications";
+import PageTracker from "@/components/PageTracker";
 import HomePage from "@/pages/HomePage";
 import CampaignsPage from "@/pages/CampaignsPage";
 import CampaignDetailPage from "@/pages/CampaignDetailPage";
@@ -15,6 +16,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/AdminPage";
 import AuthPage from "@/pages/AuthPage";
 import RankingPage from "@/pages/RankingPage";
+import AffiliatePage from "@/pages/AffiliatePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,7 @@ const App = () => {
             <Sonner position="top-center" />
             <BrowserRouter>
               <div className="mx-auto min-h-screen max-w-2xl bg-background">
+                <PageTracker />
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/vaquinhas" element={<CampaignsPage />} />
@@ -37,6 +40,7 @@ const App = () => {
                   <Route path="/perfil" element={<ProfilePage />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/ranking" element={<RankingPage />} />
+                  <Route path="/afiliado" element={<AffiliatePage />} />
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
