@@ -485,6 +485,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_affiliate_clicks: {
+        Args: { _code: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
