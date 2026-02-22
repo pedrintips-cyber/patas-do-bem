@@ -80,6 +80,32 @@ interface AppState {
   updateSiteConfig: (config: Partial<SiteConfig>) => void;
 }
 
+const fakeCommentPool = [
+  { name: 'Maria Silva', text: 'Força! 💚 Que Deus abençoe!' },
+  { name: 'Pedro Santos', text: 'Doei com o coração. Melhoras!' },
+  { name: 'Ana Oliveira', text: 'Que linda causa! Já contribuí ❤️' },
+  { name: 'Lucas Ferreira', text: 'Fico feliz em ajudar! 🐶' },
+  { name: 'Juliana Costa', text: 'Todo animal merece amor e cuidado!' },
+  { name: 'Carlos Mendes', text: 'Parabéns pelo trabalho incrível!' },
+  { name: 'Fernanda Lima', text: 'Que Deus proteja todos eles 🙏' },
+  { name: 'Rafael Souza', text: 'Contribuição feita! Vamos ajudar!' },
+  { name: 'Camila Rocha', text: 'Chorei lendo a história. Doei!' },
+  { name: 'Gustavo Alves', text: 'Compartilhei com todos os amigos!' },
+  { name: 'Beatriz Nunes', text: 'Vocês são incríveis! 💕' },
+  { name: 'Diego Martins', text: 'Sempre apoiarei essa causa!' },
+];
+
+function generateFakeComments(): Comment[] {
+  const count = 3 + Math.floor(Math.random() * 4); // 3-6 comments
+  const shuffled = [...fakeCommentPool].sort(() => Math.random() - 0.5);
+  const daysAgo = [1, 2, 3, 5, 7, 10, 14];
+  return shuffled.slice(0, count).map((c, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (daysAgo[i] || i + 1));
+    return { id: `fake-${i}`, name: c.name, text: c.text, date: d.toISOString().split('T')[0] };
+  });
+}
+
 const initialCampaigns: Campaign[] = [
   {
     id: '1',
@@ -241,13 +267,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addCampaign = useCallback((campaign: Omit<Campaign, 'id' | 'donors' | 'raised' | 'updates' | 'comments'>) => {
+    // Seed with fake progress (15-20% of goal) and pre-generated comments
+    const seedPercent = 0.15 + Math.random() * 0.05; // 15-20%
+    const seedRaised = Math.round(campaign.goal * seedPercent);
+    const seedDonors = Math.floor(seedRaised / 15) + Math.floor(Math.random() * 10) + 5;
+
     const newCampaign: Campaign = {
       ...campaign,
       id: Date.now().toString(),
-      raised: 0,
-      donors: 0,
+      raised: seedRaised,
+      donors: seedDonors,
       updates: [],
-      comments: [],
+      comments: generateFakeComments(),
     };
     setCampaigns(prev => [newCampaign, ...prev]);
   }, []);

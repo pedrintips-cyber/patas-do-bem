@@ -10,14 +10,12 @@ const quickAmounts = [10, 25, 50, 100, 200];
 
 const CampaignDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { campaigns, addDonation, addComment } = useApp();
+  const { campaigns, addDonation } = useApp();
   const campaign = campaigns.find(c => c.id === id);
 
   const [selectedAmount, setSelectedAmount] = useState<number>(25);
   const [customAmount, setCustomAmount] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [commentName, setCommentName] = useState('');
-  const [commentText, setCommentText] = useState('');
 
   if (!campaign) {
     return (
@@ -44,15 +42,6 @@ const CampaignDetailPage = () => {
     setShowModal(false);
     setCustomAmount('');
     toast.success(`💚 ${name} doou R$${donatedAmount.toFixed(2)}`, { duration: 4000 });
-  };
-
-  const handleComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentName.trim() || !commentText.trim()) return;
-    addComment(campaign.id, commentName, commentText);
-    setCommentName('');
-    setCommentText('');
-    toast.success('Comentário enviado!');
   };
 
   return (
@@ -159,30 +148,6 @@ const CampaignDetailPage = () => {
             <MessageCircle size={18} /> Comentários ({campaign.comments.length})
           </h2>
 
-          <form onSubmit={handleComment} className="space-y-2 mb-4">
-            <input
-              type="text"
-              placeholder="Seu nome"
-              value={commentName}
-              onChange={e => setCommentName(e.target.value)}
-              className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-            <textarea
-              placeholder="Deixe uma mensagem de apoio..."
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              rows={2}
-              className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              required
-            />
-            <button
-              type="submit"
-              className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground transition-transform active:scale-95"
-            >
-              Enviar
-            </button>
-          </form>
 
           <div className="space-y-3">
             {campaign.comments.map(comment => (
